@@ -18,6 +18,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
+#include "status_led.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -32,12 +33,7 @@
 #define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
 
-#define LED_BUILTIN GPIO_NUM_5
-#define LED_HIGH 1
-#define LED_LOW 0
-#define ONE_SEC (1000 / portTICK_PERIOD_MS)
-#define BUMP_DELAY 150
-#define BUMP_COUNT 2
+#define STAT_LED GPIO_NUM_5
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -135,21 +131,6 @@ void wifi_init_sta(void)
     vEventGroupDelete(s_wifi_event_group);
 }
 
-static void heartbeat(){
-    gpio_set_direction(LED_BUILTIN, GPIO_MODE_OUTPUT);
-    ESP_LOGI("Led mode", "heartbeat");
-    while (1)
-    {
-        for(int i = 0; i < BUMP_COUNT; ++i){
-            gpio_set_level(LED_BUILTIN, LED_HIGH);
-            vTaskDelay(BUMP_DELAY / portTICK_PERIOD_MS);
-            gpio_set_level(LED_BUILTIN, LED_LOW);
-            vTaskDelay(BUMP_DELAY / portTICK_PERIOD_MS);
-        }
-        vTaskDelay(BUMP_DELAY);
-    }
-}
-
 void network_proc(){
     const char *TAG = "network_proc";
     const char *msg_template = "POST / HTTP/1.0\r\n"
@@ -169,14 +150,14 @@ void network_proc(){
  
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(sock_fd < 0){
-        ESP_LOGE(TAG, "Socket create error invalid fd: %d", sock_fd);
+        ESP_LOGE(TAG, "Socket create error (error code: %d)", errno);
         ESP_LOGE(TAG, "%s", strerror(errno));
         vTaskDelete(NULL);
     } 
     
     int conn_stat = connect(sock_fd, (struct sockaddr *)&addr, sizeof addr);
     if(conn_stat != 0){
-        ESP_LOGE(TAG, "Connection error (return code: %d)", conn_stat);
+        ESP_LOGE(TAG, "Connection error (error code: %d)", errno);
         ESP_LOGE(TAG, "%s", strerror(errno));
         ESP_LOGI(TAG, "Task deleted...");
         vTaskDelete(NULL);
@@ -190,8 +171,6 @@ void network_proc(){
         vTaskDelete(NULL);
     }
     ESP_LOGI(TAG, "Process completed...");
-    printf("%s\n", msg);
-    vTaskDelay(ONE_SEC);
     close(sock_fd);
     vTaskDelete(NULL);
 }
@@ -199,9 +178,9 @@ void network_proc(){
 void app_main()
 {
     ESP_ERROR_CHECK(nvs_flash_init());
-
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    xTaskCreate(heartbeat, "led_heartbeat", 1024, NULL, 0, NULL);
+    status_led_init(STAT_LED, BLINK);
+    xTaskCreate(status_led_task, "status led", 1024, NULL, 0, NULL);
     wifi_init_sta();
     xTaskCreate(network_proc, "network process", 1024, NULL, 0, NULL);
 }
