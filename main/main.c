@@ -19,7 +19,9 @@
 #include "nvs_flash.h"
 #include "driver/gpio.h"
 #include "status_led.h"
+#include "dht11.h"
 
+#include "lwip/netdb.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include "lwip/sockets.h"
@@ -33,7 +35,8 @@
 #define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
 
-#define STAT_LED GPIO_NUM_5
+#define STAT_LED GPIO_NUM_15
+#define DHT11_SENS GPIO_NUM_13
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -133,20 +136,42 @@ void wifi_init_sta(void)
 
 void network_proc(){
     const char *TAG = "network_proc";
-    const char *msg_template = "POST / HTTP/1.0\r\n"
+    const char *msg_template = "POST /value HTTP/1.0\r\n"
+    "Content-Length: %d\r\n"
+    "Accept: application/json\r\n"
+    "Host: iottrial.herokuapp.com\r\n"
     "Connection: keep-alive\r\n"
-    "Content-type: text/json\r\n"
-    "\r\n"
+    "ApiKey: n0yxYYpLm2\r\n"
+    "Content-type: application/json\r\n\r\n"
     "{\r\n"
-    "   temp: %d;\r\n"
-    "   humi: %d;\r\n"
-    "};\r\n\r\n";
+    "   \"temperature\": %d,\r\n"
+    "   \"humidity\": %d\r\n"
+    "}\r\n\r\n";
 
-    char msg[256] = {0};
-    struct sockaddr_in addr = {0};
-    addr.sin_family = AF_INET;
-    inet_aton("192.168.1.14", &addr.sin_addr);
-    addr.sin_port = htons(8000);
+    const char *msg_template2 = "GET /value HTTP/1.0\r\n"
+    "Host: iottrial.herokuapp.com\r\n"
+    "ApiKey: n0yxYYpLm2\r\n"
+    "Content-type: application/json\r\n"
+    "Connection: keep-alive\r\n\r\n";
+
+    char msg[512];
+    memset(msg, 0, sizeof msg);
+    
+    // API ip adresi bulma
+    struct addrinfo hints;
+    struct addrinfo *res;
+    hints.ai_family = AF_INET;
+    int ret = lwip_getaddrinfo("iottrial.herokuapp.com",
+                     "80",
+                     &hints,
+                     &res);
+    if (ret != 0){
+        ESP_LOGE(TAG, "Host bulunamadı! (Hata kodu %d)", ret);
+        vTaskDelete(NULL);
+    }
+
+    // inet_aton("192.168.1.14", &addr.sin_addr);
+    // addr.sin_port = htons(8000);
  
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(sock_fd < 0){
@@ -155,32 +180,77 @@ void network_proc(){
         vTaskDelete(NULL);
     } 
     
-    int conn_stat = connect(sock_fd, (struct sockaddr *)&addr, sizeof addr);
+    int conn_stat = connect(sock_fd, res->ai_addr, res->ai_addrlen);
     if(conn_stat != 0){
         ESP_LOGE(TAG, "Connection error (error code: %d)", errno);
         ESP_LOGE(TAG, "%s", strerror(errno));
         ESP_LOGI(TAG, "Task deleted...");
         vTaskDelete(NULL);
     }
-    sprintf(msg, msg_template, 10, 10);
+
     size_t msg_len = strlen(msg);
-    size_t nbyte = send(sock_fd, msg, msg_len, 0);
+    size_t msg_template2_len = strlen(msg_template2);
+    size_t nbyte;
+    
+    size_t s = sprintf(msg, msg_template, strlen(msg_template), 6061, 6178);
+
+    printf("Mesaj: %s", msg);
+    // Send value to server
+    nbyte = send(sock_fd, msg, msg_len, 0);
     if(nbyte != msg_len){
         ESP_LOGE(TAG, "Send error (only %d/%d byte sended.)", nbyte, msg_len);
         ESP_LOGE(TAG, "%s", strerror(errno));
         vTaskDelete(NULL);
     }
+    ESP_LOGI(TAG, "Post isteği gönderildi. Cevap bekleniyor."); 
+
+    while (recv(sock_fd, msg, sizeof msg, 0) != 0){
+        printf("%s", msg);
+        memset(msg, 0, sizeof msg); 
+    };
+    printf("\n");
+
+    // Get values from server
+    nbyte = send(sock_fd, msg_template2, msg_template2_len, 0);
+    if(nbyte != msg_template2_len){
+        ESP_LOGE(TAG, "Send error (only %d/%d byte sended.)", nbyte, msg_len);
+        ESP_LOGE(TAG, "%s", strerror(errno));
+        vTaskDelete(NULL);
+    }
+
+    ESP_LOGI(TAG, "Get isteği gönderildi. Cevap bekleniyor");
+    // Get answer from server
+    while (recv(sock_fd, msg, sizeof msg, 0) != 0){
+        printf("%s", msg);
+        memset(msg, 0, sizeof msg); 
+    };
+    printf("\n");
+
     ESP_LOGI(TAG, "Process completed...");
     close(sock_fd);
+    free(res);
     vTaskDelete(NULL);
+}
+
+void measure_temp_and_humi(){
+    const char *TAG = "measure_temp_and_humi";
+    DHT11_init(DHT11_SENS);
+    while (1){
+        struct dht11_reading data; 
+        data = DHT11_read(); 
+        ESP_LOGI(TAG, "temp: %d, humi: %d", data.temperature, data.humidity);
+        vTaskDelay(5000 / portTICK_RATE_MS);
+    }
+    vTaskDelete(NULL); 
 }
 
 void app_main()
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    status_led_init(STAT_LED, BLINK);
-    xTaskCreate(status_led_task, "status led", 1024, NULL, 0, NULL);
+    // status_led_init(STAT_LED, HEARTBEAT);
+    // xTaskCreate(status_led_task, "status led", 1024, NULL, 0, NULL);
     wifi_init_sta();
-    xTaskCreate(network_proc, "network process", 1024, NULL, 0, NULL);
+    xTaskCreate(network_proc, "network process", 4096, NULL, 0, NULL);
+    // xTaskCreate(measure_temp_and_humi, "temp humi process", 1024, NULL, 0, NULL);
 }
