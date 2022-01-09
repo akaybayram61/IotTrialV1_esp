@@ -25,6 +25,7 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include "lwip/sockets.h"
+#include "esp_timer.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -35,7 +36,6 @@
 #define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
 
-#define STAT_LED GPIO_NUM_15
 #define DHT11_SENS GPIO_NUM_13
 
 /* FreeRTOS event group to signal when we are connected*/
@@ -125,6 +125,7 @@ void wifi_init_sta(void)
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
                  EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+        esp_restart();
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
@@ -134,29 +135,7 @@ void wifi_init_sta(void)
     vEventGroupDelete(s_wifi_event_group);
 }
 
-void network_proc(){
-    const char *TAG = "network_proc";
-    const char *msg_template = "POST /value HTTP/1.0\r\n"
-    "Content-Length: %d\r\n"
-    "Accept: application/json\r\n"
-    "Host: iottrial.herokuapp.com\r\n"
-    "Connection: keep-alive\r\n"
-    "ApiKey: n0yxYYpLm2\r\n"
-    "Content-type: application/json\r\n\r\n"
-    "{\r\n"
-    "   \"temperature\": %d,\r\n"
-    "   \"humidity\": %d\r\n"
-    "}\r\n\r\n";
-
-    const char *msg_template2 = "GET /value HTTP/1.0\r\n"
-    "Host: iottrial.herokuapp.com\r\n"
-    "ApiKey: n0yxYYpLm2\r\n"
-    "Content-type: application/json\r\n"
-    "Connection: keep-alive\r\n\r\n";
-
-    char msg[512];
-    memset(msg, 0, sizeof msg);
-    
+struct addrinfo *get_server_info(char *address, char *port){
     // API ip adresi bulma
     struct addrinfo hints;
     struct addrinfo *res;
@@ -166,80 +145,92 @@ void network_proc(){
                      &hints,
                      &res);
     if (ret != 0){
-        ESP_LOGE(TAG, "Host bulunamadı! (Hata kodu %d)", ret);
-        vTaskDelete(NULL);
+        return NULL;
     }
+    return res;
+}
 
-    // inet_aton("192.168.1.14", &addr.sin_addr);
-    // addr.sin_port = htons(8000);
- 
+void send_data_to_server(int temp, int humi, struct addrinfo *addr){
+    const char *TAG = "network_proc";
+    const char *msg_template = "POST /value HTTP/1.1\r\n"
+    "Host: iottrial.herokuapp.com\r\n"
+    "Content-type: application/json\r\n"
+    "ApiKey: n0yxYYpLm2\r\n"
+    "Content-Length: %d\r\n"
+    "Connection: close\r\n"
+    "\r\n";
+    const char *json_template = "{\"temperature\": %d,\"humidity\": %d}\r\n\r\n";
+    char msg[512];
+    memset(msg, 0, sizeof msg);
+    
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(sock_fd < 0){
         ESP_LOGE(TAG, "Socket create error (error code: %d)", errno);
         ESP_LOGE(TAG, "%s", strerror(errno));
-        vTaskDelete(NULL);
+        return;
     } 
     
-    int conn_stat = connect(sock_fd, res->ai_addr, res->ai_addrlen);
+    int conn_stat = connect(sock_fd, addr->ai_addr, addr->ai_addrlen);
     if(conn_stat != 0){
         ESP_LOGE(TAG, "Connection error (error code: %d)", errno);
         ESP_LOGE(TAG, "%s", strerror(errno));
         ESP_LOGI(TAG, "Task deleted...");
-        vTaskDelete(NULL);
+        return;
     }
-
+    size_t nbyte, s;
+    s = sprintf(msg, msg_template, strlen(json_template));
+    sprintf(msg + s, json_template, temp, humi);
     size_t msg_len = strlen(msg);
-    size_t msg_template2_len = strlen(msg_template2);
-    size_t nbyte;
-    
-    size_t s = sprintf(msg, msg_template, strlen(msg_template), 6061, 6178);
-
-    printf("Mesaj: %s", msg);
     // Send value to server
     nbyte = send(sock_fd, msg, msg_len, 0);
     if(nbyte != msg_len){
         ESP_LOGE(TAG, "Send error (only %d/%d byte sended.)", nbyte, msg_len);
         ESP_LOGE(TAG, "%s", strerror(errno));
-        vTaskDelete(NULL);
+        return;
     }
     ESP_LOGI(TAG, "Post isteği gönderildi. Cevap bekleniyor."); 
-
-    while (recv(sock_fd, msg, sizeof msg, 0) != 0){
-        printf("%s", msg);
-        memset(msg, 0, sizeof msg); 
-    };
-    printf("\n");
-
-    // Get values from server
-    nbyte = send(sock_fd, msg_template2, msg_template2_len, 0);
-    if(nbyte != msg_template2_len){
-        ESP_LOGE(TAG, "Send error (only %d/%d byte sended.)", nbyte, msg_len);
-        ESP_LOGE(TAG, "%s", strerror(errno));
-        vTaskDelete(NULL);
-    }
-
-    ESP_LOGI(TAG, "Get isteği gönderildi. Cevap bekleniyor");
     // Get answer from server
+    memset(msg, 0, sizeof msg); 
     while (recv(sock_fd, msg, sizeof msg, 0) != 0){
         printf("%s", msg);
-        memset(msg, 0, sizeof msg); 
+        if(strstr(msg, "\r\n\r\n") != NULL){
+            break;
+        }
     };
     printf("\n");
-
-    ESP_LOGI(TAG, "Process completed...");
+    ESP_LOGI(TAG, "Send process succeded...");
     close(sock_fd);
-    free(res);
-    vTaskDelete(NULL);
+    return;
 }
 
 void measure_temp_and_humi(){
-    const char *TAG = "measure_temp_and_humi";
-    DHT11_init(DHT11_SENS);
+    const char *TAG = "Temparature and Humidity Task";
+    struct addrinfo *server;
+    int try_count = 5;
+    while (try_count > 0){
+        server = get_server_info("iottrial.herokuapp.com", "80");
+        if(server == NULL){
+            ESP_LOGE(TAG, "Server not found! Retrying...");
+            try_count--;
+            vTaskDelay(1000 / portTICK_RATE_MS);
+        }else
+            break;
+    }
+
+    if(server == NULL){
+        ESP_LOGE(TAG, "Server not found!");
+        vTaskDelete(NULL);
+    }
+    
+    DHT11_init(GPIO_NUM_5);
     while (1){
         struct dht11_reading data; 
         data = DHT11_read(); 
-        ESP_LOGI(TAG, "temp: %d, humi: %d", data.temperature, data.humidity);
-        vTaskDelay(5000 / portTICK_RATE_MS);
+        if(data.status == DHT11_OK){
+            ESP_LOGI(TAG, "temp: %d, humi: %d", data.temperature, data.humidity);
+            send_data_to_server(data.temperature, data.humidity, server);
+            vTaskDelay(5000 / portTICK_RATE_MS);
+        }
     }
     vTaskDelete(NULL); 
 }
@@ -248,9 +239,8 @@ void app_main()
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    // status_led_init(STAT_LED, HEARTBEAT);
-    // xTaskCreate(status_led_task, "status led", 1024, NULL, 0, NULL);
+    //xTaskCreate(status_led_task, "status led", 1024, NULL, 0, NULL);
     wifi_init_sta();
-    xTaskCreate(network_proc, "network process", 4096, NULL, 0, NULL);
-    // xTaskCreate(measure_temp_and_humi, "temp humi process", 1024, NULL, 0, NULL);
+    xTaskCreate(measure_temp_and_humi, "temp humi process", 2048, NULL, 0, NULL);
+    // xTaskCreate(network_proc, "network process", 4096, NULL, 0, NULL);
 }
