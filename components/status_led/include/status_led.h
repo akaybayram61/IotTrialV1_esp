@@ -15,10 +15,19 @@ typedef enum{
     HEARTBEAT
 }led_mode_t;
 
+enum{
+    STATUS_LED_OK,
+    STATUS_LED_ERR_INIT_FAILED,
+    STATUS_LED_ERR_TASK_FAILED,
+    STATUS_LED_ERR_UNINITIALIZED,
+    STATUS_LED_ERR_INVALID_MODE,
+};
+
 void heartbeat();
 void blink();
 
-void status_led_init(gpio_num_t, led_mode_t);
-void status_led_task();
+int32_t status_led_task_status_set(bool mode);
+int32_t status_led_init(gpio_num_t, led_mode_t);
+int32_t status_led_task();
 
 #endif // __STATUS_LED_H__

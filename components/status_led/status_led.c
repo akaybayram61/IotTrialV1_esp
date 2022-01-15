@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -16,21 +17,42 @@ static void (*led_funcs[2])() = {
     [HEARTBEAT] = heartbeat
 };
 
+static gpio_num_t st_led_pin = -1;
+static led_mode_t st_led_mode = -1;
+volatile bool led_task_status = true;
 
-static gpio_num_t st_led_pin;
-static led_mode_t st_led_mode;
 
-void status_led_init(gpio_num_t pin, led_mode_t mode){
-    st_led_mode = mode;
-    st_led_pin = pin;
-    gpio_set_direction(st_led_pin, GPIO_MODE_OUTPUT);
-    ESP_LOGI(TAG, "led init with mode %s", led_mode[st_led_mode]);
+void status_led_task_status_set(bool mode){
+    led_task_status = mode;
 }
 
-void status_led_task(){
-    while (1){
+int32_t status_led_init(gpio_num_t pin, led_mode_t mode){
+    st_led_mode = mode;
+
+    if(st_led_mode >= sizeof led_funcs){
+        return STATUS_LED_ERR_INVALID_MODE;
+    }
+
+    st_led_pin = pin;
+    int32_t status = gpio_set_direction(st_led_pin, GPIO_MODE_OUTPUT);
+    if(status == ESP_OK){
+        ESP_LOGI(TAG, "led init with mode %s", led_mode[st_led_mode]);
+        return STATUS_LED_OK;
+    }
+
+    return STATUS_LED_ERR_UNINITIALIZED;
+}
+
+int32_t status_led_task(){
+    if(st_led_mode == -1 || st_led_pin == -1){
+        return STATUS_LED_ERR_UNINITIALIZED;
+    }
+    
+    while (led_task_status){
         led_funcs[st_led_mode]();
     }
+
+    return STATUS_LED_OK;
 }
 
 void heartbeat(){
