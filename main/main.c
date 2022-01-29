@@ -92,7 +92,7 @@ void wifi_init_sta(void)
         .sta = {
             .ssid = EXAMPLE_ESP_WIFI_SSID,
             .password = EXAMPLE_ESP_WIFI_PASS
-        },
+        }
     };
 
     /* Setting a password implies station will connect to all security modes including WEP/WPA.
@@ -105,7 +105,7 @@ void wifi_init_sta(void)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
-    ESP_ERROR_CHECK(esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
@@ -242,5 +242,4 @@ void app_main()
     //xTaskCreate(status_led_task, "status led", 1024, NULL, 0, NULL);
     wifi_init_sta();
     xTaskCreate(measure_temp_and_humi, "temp humi process", 2048, NULL, 0, NULL);
-    // xTaskCreate(network_proc, "network process", 4096, NULL, 0, NULL);
 }

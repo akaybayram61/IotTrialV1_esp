@@ -12,7 +12,8 @@
 
 typedef enum{
     BLINK,
-    HEARTBEAT
+    HEARTBEAT,
+    LED_MODE_SIZE
 }led_mode_t;
 
 enum{
