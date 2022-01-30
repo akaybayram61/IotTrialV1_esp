@@ -19,7 +19,7 @@ struct addrinfo *get_server_info(char *address, char *port){
     return res;
 }
 
-void send_data_to_server(int temp, int humi, struct addrinfo *addr){
+static void send_data_to_server(int temp, int humi, struct addrinfo *addr){
     const char *TAG = "network_proc";
     const char *msg_template = "POST /value HTTP/1.1\r\n"
     "Host: iottrial.herokuapp.com\r\n"

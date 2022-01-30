@@ -1,13 +1,13 @@
 #include "http_server_tasks.h"
 
-const char *greet_msg = "HTTP/1.1 200 OK\r\n\
+static const char *greet_msg = "HTTP/1.1 200 OK\r\n\
 Content-Type: text/html; charset=utf-8\r\n\
 Content-Length: 40\r\n\
 Connection: Close\r\n\
 \r\n\
 <html><h1>Hosgeldin Müdür!</h1></html>\r\n\r\n";
 
-void greet_pair(int s){
+static void greet_pair(int s){
     size_t size = send(s, greet_msg, strlen(greet_msg), 0);
     if(size != strlen(greet_msg))
         ESP_LOGE("greet_pair", "Failed to send greet message!");
@@ -46,5 +46,4 @@ void http_server(){
         ESP_LOGI(TAG, "Pair accepted and greeted!");
         close(pair_fd);
     }
-    
 }

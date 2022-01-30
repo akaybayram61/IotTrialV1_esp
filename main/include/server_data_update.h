@@ -8,6 +8,5 @@
 #include "esp_timer.h"
 
 struct addrinfo *get_server_info(char *address, char *port);
-void send_data_to_server(int temp, int humi, struct addrinfo *addr);
 void measure_temp_and_humi();
 #endif // _SERVER_DATA_UPDATE_H_
