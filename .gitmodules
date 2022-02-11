@@ -1,0 +1,3 @@
+[submodule "components/mini_http/mini_http"]
+	path = components/mini_http/mini_http
+	url = https://github.com/akaybayram61/mini_http
