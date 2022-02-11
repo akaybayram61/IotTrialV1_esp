@@ -8,6 +8,8 @@
 #include "esp_timer.h"
 #include "esp_log.h"
 
-void http_server();
+#define MAX_RECV_BUFF_LEN 512
+
+void iottrialv1_http_server();
 
 #endif // _HTTP_SERVER_TASKS_

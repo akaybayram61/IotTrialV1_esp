@@ -16,10 +16,10 @@ void app_main(){
     //xTaskCreate(status_led_task, "status led", 1024, NULL, 0, NULL);
 
     // wifi ap and sta mode start
-    wifi_setup_components();
-    wifi_init_sta();
-    wifi_init_softap();
+    iottrialv1_wifi_setup_components();
+    iottrialv1_wifi_init_sta();
+    iottrialv1_wifi_init_softap();
 
-    xTaskCreate(http_server, "http server", 1024, NULL, 1, NULL);    
-    xTaskCreate(measure_temp_and_humi, "temp humi process", 2048, NULL, 0, NULL);
+    xTaskCreate(iottrialv1_http_server, "iottrialv1 http server", 1024, NULL, 1, NULL);    
+    xTaskCreate(iottrialv1_measure_temp_and_humi, "iottrialv1 temp humi process", 2048, NULL, 0, NULL);
 }

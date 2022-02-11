@@ -58,7 +58,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-void wifi_init_sta(void)
+void iottrialv1_wifi_init_sta(void)
 {
     s_wifi_event_group = xEventGroupCreate();
 
@@ -112,7 +112,7 @@ void wifi_init_sta(void)
     vEventGroupDelete(s_wifi_event_group);
 }
 
-void wifi_init_softap()
+void iottrialv1_wifi_init_softap()
 {
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
 
@@ -138,7 +138,7 @@ void wifi_init_softap()
              AP_SSID, AP_PASS);
 }
 
-void wifi_setup_components(){
+void iottrialv1_wifi_setup_components(){
     // Wifi init
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_create_default());

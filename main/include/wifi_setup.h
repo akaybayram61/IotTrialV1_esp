@@ -1,5 +1,5 @@
-#ifndef _WIFI_SETUP_
-#define _WIFI_SETUP_
+#ifndef __WIFI_SETUP__
+#define __WIFI_SETUP__
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -11,7 +11,7 @@
 #include "esp_wifi.h"
 #include "string.h"
 
-void wifi_setup_components();
-void wifi_init_sta();
-void wifi_init_softap();
-#endif // _WIFI_SETUP_
+void iottrialv1_wifi_setup_components();
+void iottrialv1_wifi_init_sta();
+void iottrialv1_wifi_init_softap();
+#endif //__WIFI_SETUP__

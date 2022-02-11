@@ -1,11 +1,12 @@
 #include "http_server_tasks.h"
+#include "mini_http.h"
 
 static const char *greet_msg = "HTTP/1.1 200 OK\r\n\
 Content-Type: text/html; charset=utf-8\r\n\
-Content-Length: 40\r\n\
+Content-Length: 109\r\n\
 Connection: Close\r\n\
 \r\n\
-<html><h1>Hosgeldin Müdür!</h1></html>\r\n\r\n";
+<html><p id=\"demo\"></p><script>document.getElementById(\"demo\").innerHTML=\"Hello JavaScript!\";</script></html>\r\n\r\n";
 
 static void greet_pair(int s){
     size_t size = send(s, greet_msg, strlen(greet_msg), 0);
@@ -13,7 +14,7 @@ static void greet_pair(int s){
         ESP_LOGE("greet_pair", "Failed to send greet message!");
 }
 
-void http_server(){
+void iottrialv1_http_server(){
     const char *TAG = "http_server";
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd == -1){
@@ -36,7 +37,7 @@ void http_server(){
         ESP_LOGE(TAG, "Listen error!");
         vTaskDelete(NULL);
     }
-
+    
     int pair_fd = 0; 
     struct sockaddr_in pair_addr = {0};
     socklen_t pair_len = sizeof pair_addr;

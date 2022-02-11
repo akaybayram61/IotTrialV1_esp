@@ -72,7 +72,7 @@ static void send_data_to_server(int temp, int humi, struct addrinfo *addr){
     return;
 }
 
-void measure_temp_and_humi(){
+void iottrialv1_measure_temp_and_humi(){
     const char *TAG = "Temparature and Humidity Task";
     struct addrinfo *server;
     int try_count = 5;
