@@ -7,6 +7,8 @@
 #include "lwip/sockets.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+#include "html_pages.h"
+#include "mini_http.h"
 
 #define MAX_RECV_BUFF_LEN 512
 

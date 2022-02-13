@@ -2,8 +2,6 @@
 #ifndef __HTML_PAGES__
 #define __HTML_PAGES__
 
-const char *index_html = "<html><head><title>Iottrialv1 Ayarlar</title></head><style>div {margin-bottom: 10px;text-align: center;}label {display: inline-block;width: 100px;text-align: left;}</style><body><div><form action=\"/giris\" method=\"post\"><h1>Giris Bilgileri</h1><label for=\"cusName\">Kullanici adi:</label><input type=\"text\" id=\"cusName\" name=\"cusName\"></div><div><label for=\"cusPasw\">Sifre:</label><input type=\"text\" id=\"cusPasw\" name=\"cusPasw\"><br><br><input type=\"submit\" value=\"Onayla\"></form></div></body></html>";
-
-const char *settings_html = "<html><head><title>Ayarlar</title></head><style>.text_input {margin-bottom: 10px;text-align: center;}label {display: inline-block;width: 80;text-align: left;}</style><body><div><form action=\"/settings\" method=\"post\"><h1>Ayarlar</h1><p>Arayuz ayarlari:</p><div id=\"text_input\"><label for=\"cusName\">Kullanici:</label><input type=\"text\" id=\"cusName\" name=\"cusName\"><br><br><label for=\"cusPasw\">Sifre</label><input type=\"text\" id=\"cusPasw\" name=\"cusPasw\"><br></div><p>Durum ledi yanis tipi:</p><input type=\"radio\" id=\"ledStat\" name=\"ledStat\" value=\"ledhb\"><label for=\"ledStat\">Heartbeat</label><br><input type=\"radio\" id=\"ledStat2\" name=\"ledStat\" value=\"ledbl\"><label for=\"ledStat2\">Blink</label><br><p>Erisim noktasi ayarlari:</p><div id=\"text_input\"><label for=\"apSSID\">SSID:</label><input type=\"text\" id=\"apSSID\" name=\"apName\"><br><br><label for=\"apSifre\">Sifre</label><input type=\"text\" id=\"apSifre\" name=\"apSifre\"><br></div></form></div></body></html>";
-
+extern const char *index_html;
+extern const char *settings_html;
 #endif // __HTML_PAGES__

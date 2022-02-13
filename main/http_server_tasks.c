@@ -1,17 +1,35 @@
 #include "http_server_tasks.h"
 #include "mini_http.h"
 
-static const char *greet_msg = "HTTP/1.1 200 OK\r\n\
-Content-Type: text/html; charset=utf-8\r\n\
-Content-Length: 109\r\n\
-Connection: Close\r\n\
-\r\n\
-<html><p id=\"demo\"></p><script>document.getElementById(\"demo\").innerHTML=\"Hello JavaScript!\";</script></html>\r\n\r\n";
-
 static void greet_pair(int s){
-    size_t size = send(s, greet_msg, strlen(greet_msg), 0);
-    if(size != strlen(greet_msg))
+    size_t size = 0;
+    char sbuffer[1024] = {0};
+    size = recv(s, sbuffer, sizeof sbuffer, 0);
+    
+    HTTPResp resp = {
+        .version = HTTP_VER_1_1,
+        .status_code = HTTP_OK,
+        .connection = true,
+        .content_type = "text/html",
+    };
+    resp.content_length = strlen(index_html);
+    mini_http_gen_resp_str(&resp, sbuffer, sizeof sbuffer);
+    ESP_LOGW("greet_pair", "%s", sbuffer);
+
+    ESP_LOGW("greeter", "%s", index_html);
+    size = send(s, sbuffer, strlen(sbuffer), 0);
+
+    if(size != strlen(sbuffer))
         ESP_LOGE("greet_pair", "Failed to send greet message!");
+    else
+        ESP_LOGE("greet_pair", "header send succesfull!");
+
+    size = send(s, index_html, strlen(index_html), 0);
+    
+    if(size != strlen(index_html))
+        ESP_LOGE("greet_pair", "Failed to greeting!");
+    else
+        ESP_LOGE("greet_pair", "data send succesfull!");
 }
 
 void iottrialv1_http_server(){
@@ -45,6 +63,5 @@ void iottrialv1_http_server(){
     while ((pair_fd = accept(fd, (struct sockaddr *)&pair_addr, &pair_len)) != -1 ){
         greet_pair(pair_fd);
         ESP_LOGI(TAG, "Pair accepted and greeted!");
-        close(pair_fd);
     }
 }
