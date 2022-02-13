@@ -1,3 +1,2 @@
-set(COMPONENT_SRCDIRS "./mini_http/src")
-set(COMPONENT_ADD_INCLUDEDIRS "./mini_http/inc")
-register_component()
+idf_component_register(SRCDIRS "mini_http/src"
+                       INCLUDE_DIRS "mini_http/inc" )

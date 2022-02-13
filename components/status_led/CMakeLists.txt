@@ -1,3 +1,2 @@
-set(COMPONENT_SRCDIRS ".")
-set(COMPONENT_ADD_INCLUDEDIRS "include")
-register_component()
+idf_component_register(SRCDIRS "."
+                       INCLUDE_DIRS "include")
